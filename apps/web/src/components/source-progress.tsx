@@ -1,0 +1,5 @@
+"use client";
+import { AnimatePresence, motion } from "motion/react";
+import { Check, LoaderCircle, TriangleAlert } from "lucide-react";
+export type SourceState={name:string;status:"searching"|"complete"|"failed";count?:number;latency?:number};
+export function SourceProgress({sources,show}:{sources:SourceState[];show:boolean}){return <AnimatePresence>{show&&<motion.div initial={{opacity:0,y:-8,height:0}} animate={{opacity:1,y:0,height:"auto"}} exit={{opacity:0,height:0}} className="overflow-hidden"><div className="mt-3 flex flex-wrap gap-2">{sources.map(s=><motion.div layout key={s.name} className="flex h-8 items-center gap-2 rounded-full border border-black/7 bg-white/70 px-3 text-[11px] font-medium text-[#5c675e]">{s.status==="searching"?<LoaderCircle className="size-3.5 animate-spin text-[#2c6b4d]"/>:s.status==="complete"?<Check className="size-3.5 text-[#2c6b4d]"/>:<TriangleAlert className="size-3.5 text-[#a56332]"/>}<span>{s.name}</span>{s.count!==undefined&&<span className="text-[#8a928b]">{s.count}</span>}</motion.div>)}</div></motion.div>}</AnimatePresence>}

@@ -1,0 +1,19 @@
+{
+  "name": "@openforge/database",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./env": "./src/env.ts",
+    "./persist": "./src/persist-opportunities.ts",
+    "./register-env": "./src/register-env.ts",
+    "./generated": "./src/generated/prisma/client.ts"
+  },
+  "dependencies": {
+    "@openforge/domain": "1.0.0",
+    "@prisma/adapter-pg": "7.8.0",
+    "@prisma/client": "7.8.0",
+    "pg": "8.22.0"
+  }
+}

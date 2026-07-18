@@ -1,0 +1,2 @@
+import { PageHero } from "@/components/page-hero";import { CollaboratorsClient } from "@/components/collaborators-client";
+export const metadata={title:"Collaborators"};export default function Page(){return <main><PageHero badge="People graph" title="Find the missing person on your team." description="Match by demonstrated skills, interests, availability and the kind of project you actually want to build."/><CollaboratorsClient/></main>}

@@ -1,0 +1,2 @@
+import { prisma } from "@openforge/database";
+export async function GET(request:Request){const q=new URL(request.url).searchParams.get("q")?.trim()??"";try{const profiles=await prisma.profile.findMany({where:{openToCollaboration:true,...(q?{OR:[{headline:{contains:q,mode:"insensitive"}},{bio:{contains:q,mode:"insensitive"}},{interests:{has:q}}]}:{})},take:30,include:{user:{select:{id:true,name:true,image:true,skills:{include:{skill:true}}}}}});return Response.json({profiles})}catch{return Response.json({profiles:[]})}}

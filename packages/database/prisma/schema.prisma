@@ -1,0 +1,679 @@
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  engineType          = "client"
+  importFileExtension = "ts"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  USER
+  MAINTAINER
+  ORGANIZATION
+  UNIVERSITY
+  EVENT_ORGANIZER
+  ADMIN
+}
+
+enum SkillEvidenceType {
+  SELF_REPORTED
+  CONTRIBUTION
+  VERIFIED
+}
+
+enum EntityType {
+  PROJECT
+  CONTRIBUTION
+  EVENT
+  HARDWARE_PROJECT
+  COLLABORATION_REQUEST
+  ORGANIZATION
+}
+
+enum Difficulty {
+  STARTING
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  UNKNOWN
+}
+
+enum OpportunityMode {
+  REMOTE
+  PHYSICAL
+  HYBRID
+  UNKNOWN
+}
+
+enum CrawlJobType {
+  DISCOVER_SOURCE
+  SEARCH_LIVE
+  FETCH_ENTITY
+  REFRESH_ENTITY
+  PARSE_DOCUMENT
+  NORMALIZE_ENTITY
+  RESOLVE_DUPLICATE
+  CALCULATE_PROJECT_HEALTH
+  CALCULATE_MATCH
+  REFRESH_EVENT
+  RADAR_MATCH
+  SOURCE_HEALTH_CHECK
+}
+
+enum CrawlJobStatus {
+  QUEUED
+  CLAIMED
+  RUNNING
+  SUCCEEDED
+  FAILED
+  DEAD_LETTER
+  CANCELLED
+}
+
+enum SourceStatus {
+  ACTIVE
+  PAUSED
+  DEGRADED
+  RATE_LIMITED
+  ERROR
+}
+
+enum MembershipStatus {
+  PENDING
+  ACTIVE
+  REJECTED
+  REMOVED
+}
+
+enum NotificationType {
+  RADAR_MATCH
+  EVENT_OPENED
+  PROJECT_UPDATE
+  TEAM_REQUEST
+  SYSTEM
+}
+
+enum ClaimStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+model User {
+  id            String   @id @default(cuid())
+  name          String
+  email         String   @unique
+  emailVerified Boolean  @default(false)
+  image         String?
+  role          UserRole @default(USER)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  sessions      Session[]
+  accounts      Account[]
+  profile       Profile?
+  skills        UserSkill[]
+  savedItems    SavedItem[]
+  watchlists    Watchlist[]
+  searches      Search[]
+  projectMembers ProjectMember[]
+  joinRequests  CollaborationRequest[] @relation("Requester")
+  contributions Contribution[]
+  projectPosts   ProjectPost[]
+  conversations ChatConversation[]
+  notifications Notification[]
+  maintainerClaims MaintainerClaim[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
+}
+
+model Account {
+  id                    String   @id @default(cuid())
+  userId                String
+  accountId             String
+  providerId            String
+  accessToken           String?
+  refreshToken          String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                  String?
+  idToken                String?
+  password               String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+  user                   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
+  @@unique([providerId, accountId])
+}
+
+model Verification {
+  id         String   @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  @@index([identifier])
+}
+
+model Profile {
+  id                    String   @id @default(cuid())
+  userId                String   @unique
+  headline              String?
+  bio                   String?
+  location              String?
+  timezone              String?
+  availability          String?
+  experienceLevel       Difficulty @default(UNKNOWN)
+  interests             String[]
+  goals                 String[]
+  githubUsername        String?
+  openToCollaboration   Boolean @default(true)
+  personalizationEnabled Boolean @default(true)
+  contributionDna       Json?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  user                  User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Skill {
+  id        String @id @default(cuid())
+  name      String @unique
+  category  String?
+  users     UserSkill[]
+  evidence SkillEvidence[]
+}
+
+model UserSkill {
+  id       String @id @default(cuid())
+  userId   String
+  skillId  String
+  level    Difficulty @default(UNKNOWN)
+  evidenceType SkillEvidenceType @default(SELF_REPORTED)
+  strength Int @default(50)
+  user     User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skill    Skill @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  @@unique([userId, skillId])
+}
+
+model Organization {
+  id          String @id @default(cuid())
+  name        String
+  slug        String @unique
+  description String?
+  websiteUrl  String?
+  verified    Boolean @default(false)
+  projects    Project[]
+  events      Event[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Project {
+  id             String @id @default(cuid())
+  title          String
+  slug           String @unique
+  description    String?
+  canonicalUrl   String @unique
+  organizationId String?
+  entityType     EntityType @default(PROJECT)
+  hardware       Boolean @default(false)
+  technologies   String[]
+  languages      String[]
+  topics         String[]
+  license        String?
+  stars          Int?
+  contributors   Int?
+  openIssues     Int?
+  activityScore  Int @default(0)
+  qualityScore   Int @default(0)
+  freshnessScore Int @default(0)
+  beginnerScore  Int @default(0)
+  communityScore Int @default(0)
+  contributionClarityScore Int @default(0)
+  lastActivity   DateTime?
+  archived       Boolean @default(false)
+  sourceId       String?
+  sourceExternalId String?
+  metadata       Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  repository     Repository?
+  opportunities  ContributionOpportunity[]
+  roleSlots      ProjectRole[]
+  members        ProjectMember[]
+  tasks          ProjectTask[]
+  posts          ProjectPost[]
+  contributions  Contribution[]
+  maintainerClaims MaintainerClaim[]
+  @@index([hardware, lastActivity])
+  @@index([sourceId, sourceExternalId])
+  @@index([qualityScore, lastActivity])
+}
+
+
+model MaintainerClaim {
+  id          String      @id @default(cuid())
+  projectId   String
+  userId      String
+  status      ClaimStatus @default(PENDING)
+  evidenceUrl String?
+  provider    String?
+  verifiedAt  DateTime?
+  reviewedBy  String?
+  notes       String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  project     Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([projectId, userId])
+  @@index([status, createdAt])
+}
+
+model Repository {
+  id               String @id @default(cuid())
+  projectId        String @unique
+  provider         String
+  owner            String
+  name             String
+  defaultBranch    String?
+  cloneUrl         String?
+  repositoryUrl    String @unique
+  contributingUrl  String?
+  readmeUrl         String?
+  project          Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  @@index([provider, owner, name])
+}
+
+model ContributionOpportunity {
+  id                String @id @default(cuid())
+  projectId         String?
+  title             String
+  description       String?
+  shortSummary      String?
+  canonicalUrl      String @unique
+  contributionUrl   String
+  source            String
+  sourceExternalId  String?
+  technologies      String[]
+  languages         String[]
+  topics            String[]
+  skillsRequired    String[]
+  difficulty        Difficulty @default(UNKNOWN)
+  estimatedComplexity String?
+  beginnerFriendly  Boolean @default(false)
+  goodFirstIssue    Boolean @default(false)
+  helpWanted        Boolean @default(false)
+  activityScore     Int @default(0)
+  maintainerResponsiveness Int @default(0)
+  freshnessScore    Int @default(0)
+  qualityScore      Int @default(0)
+  contributionTypes String[]
+  hardware          Boolean @default(false)
+  lastActivity      DateTime?
+  issueNumber       Int?
+  labels            String[]
+  metadata          Json?
+  scrapedAt         DateTime @default(now())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  project           Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  contributions     Contribution[]
+  @@index([source, lastActivity])
+  @@index([beginnerFriendly, goodFirstIssue, hardware])
+  @@index([difficulty, lastActivity])
+  @@index([goodFirstIssue, helpWanted, lastActivity])
+}
+
+model Event {
+  id             String @id @default(cuid())
+  title          String
+  description    String?
+  canonicalUrl   String @unique
+  registrationUrl String?
+  source         String
+  sourceExternalId String?
+  organizationId String?
+  eventType      String
+  technologies   String[]
+  topics         String[]
+  location       String?
+  city           String?
+  country        String?
+  mode           OpportunityMode @default(UNKNOWN)
+  startsAt       DateTime?
+  endsAt         DateTime?
+  deadline       DateTime?
+  free           Boolean?
+  registrationOpen Boolean?
+  qualityScore   Int @default(0)
+  freshnessScore Int @default(0)
+  metadata       Json?
+  scrapedAt      DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  @@index([startsAt, country, mode])
+  @@index([eventType, startsAt])
+  @@index([source, scrapedAt])
+}
+
+model Source {
+  id                String @id
+  name              String
+  baseUrl           String
+  adapter           String
+  status            SourceStatus @default(ACTIVE)
+  enabled           Boolean @default(true)
+  defaultConcurrency Int @default(1)
+  lastCrawlAt       DateTime?
+  nextCrawlAt       DateTime?
+  successRate       Float @default(1)
+  avgLatencyMs      Int @default(0)
+  rateLimitedUntil  DateTime?
+  lastError         String?
+  itemsDiscovered   Int @default(0)
+  metadata          Json?
+  jobs              CrawlJob[]
+  runs              CrawlRun[]
+  documents         ScrapedDocument[]
+}
+
+model SourceEntity {
+  id             String @id @default(cuid())
+  sourceId       String
+  externalId     String
+  entityType     EntityType
+  canonicalUrl   String
+  canonicalEntityId String?
+  payloadHash    String?
+  lastSeenAt     DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  @@unique([sourceId, externalId])
+  @@index([canonicalUrl])
+}
+
+model CrawlJob {
+  id            String @id @default(cuid())
+  type          CrawlJobType
+  status        CrawlJobStatus @default(QUEUED)
+  sourceId      String?
+  priority      Int @default(100)
+  payload       Json
+  result        Json?
+  attempts      Int @default(0)
+  maxAttempts   Int @default(4)
+  scheduledAt   DateTime @default(now())
+  claimedAt     DateTime?
+  leaseUntil    DateTime?
+  workerId      String?
+  startedAt     DateTime?
+  completedAt   DateTime?
+  nextRetryAt   DateTime?
+  failureReason String?
+  deadLetterAt  DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  source        Source? @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+  @@index([status, scheduledAt, priority])
+  @@index([sourceId, status])
+}
+
+model CrawlRun {
+  id             String @id @default(cuid())
+  sourceId       String
+  startedAt      DateTime @default(now())
+  completedAt    DateTime?
+  discovered     Int @default(0)
+  normalized     Int @default(0)
+  deduplicated   Int @default(0)
+  failures       Int @default(0)
+  durationMs     Int?
+  metadata       Json?
+  source         Source @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  @@index([sourceId, startedAt])
+}
+
+model ScrapedDocument {
+  id          String @id @default(cuid())
+  sourceId    String
+  url         String
+  canonicalUrl String
+  contentType String?
+  etag        String?
+  lastModified String?
+  contentHash String?
+  statusCode  Int
+  fetchedAt   DateTime @default(now())
+  metadata    Json?
+  source      Source @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  @@unique([sourceId, canonicalUrl])
+}
+
+model EntityFingerprint {
+  id          String @id @default(cuid())
+  entityType  EntityType
+  canonicalId String
+  fingerprint String @unique
+  titleNorm   String?
+  orgNorm     String?
+  dateKey     String?
+  locationNorm String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  @@index([entityType, canonicalId])
+}
+
+model SavedItem {
+  id          String @id @default(cuid())
+  userId      String
+  entityType  EntityType
+  entityId    String
+  canonicalUrl String
+  title       String
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  user        User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([userId, canonicalUrl])
+}
+
+model Watchlist {
+  id          String @id @default(cuid())
+  userId      String
+  name        String
+  query       String
+  filters     Json
+  enabled     Boolean @default(true)
+  lastRunAt   DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Search {
+  id          String @id @default(cuid())
+  userId      String?
+  query       String
+  filters     Json
+  resultCount Int @default(0)
+  live        Boolean @default(false)
+  createdAt   DateTime @default(now())
+  user        User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  @@index([userId, createdAt])
+}
+
+model ProjectMember {
+  id        String @id @default(cuid())
+  projectId String
+  userId    String
+  role      String
+  status    MembershipStatus @default(ACTIVE)
+  joinedAt  DateTime @default(now())
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([projectId, userId])
+}
+
+
+model ProjectTask {
+  id          String   @id @default(cuid())
+  projectId   String
+  title       String
+  description String?
+  status      String   @default("TODO")
+  priority    Int      @default(100)
+  assigneeId  String?
+  dueAt       DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  @@index([projectId, status, priority])
+}
+
+model ProjectPost {
+  id        String   @id @default(cuid())
+  projectId String
+  authorId  String
+  kind      String   @default("DISCUSSION")
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  @@index([projectId, createdAt])
+}
+
+model ProjectRole {
+  id          String @id @default(cuid())
+  projectId   String
+  title       String
+  description String?
+  slots       Int @default(1)
+  skills      String[]
+  open        Boolean @default(true)
+  project     Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  requests    CollaborationRequest[]
+}
+
+model CollaborationRequest {
+  id          String @id @default(cuid())
+  projectRoleId String
+  requesterId String
+  message     String?
+  status      MembershipStatus @default(PENDING)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  role        ProjectRole @relation(fields: [projectRoleId], references: [id], onDelete: Cascade)
+  requester   User @relation("Requester", fields: [requesterId], references: [id], onDelete: Cascade)
+  @@unique([projectRoleId, requesterId])
+}
+
+model Contribution {
+  id             String @id @default(cuid())
+  userId         String
+  projectId      String?
+  opportunityId  String?
+  externalUrl    String
+  type           String
+  status         String
+  title          String
+  merged         Boolean @default(false)
+  occurredAt     DateTime?
+  metadata       Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project        Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  opportunity    ContributionOpportunity? @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
+  evidence       ContributionEvidence[]
+  @@index([userId, occurredAt])
+}
+
+model ContributionEvidence {
+  id             String @id @default(cuid())
+  contributionId String
+  evidenceType   String
+  url            String?
+  metadata       Json?
+  verified       Boolean @default(false)
+  createdAt      DateTime @default(now())
+  contribution   Contribution @relation(fields: [contributionId], references: [id], onDelete: Cascade)
+}
+
+model SkillEvidence {
+  id             String @id @default(cuid())
+  skillId        String
+  userId         String
+  contributionId String?
+  evidenceType   SkillEvidenceType
+  strength       Int @default(50)
+  description    String?
+  createdAt      DateTime @default(now())
+  skill          Skill @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  @@index([userId, skillId])
+}
+
+model ChatConversation {
+  id        String @id @default(cuid())
+  userId    String?
+  title     String?
+  context   Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  messages  ChatMessage[]
+}
+
+model ChatMessage {
+  id             String @id @default(cuid())
+  conversationId String
+  role           String
+  content        String
+  metadata       Json?
+  createdAt      DateTime @default(now())
+  conversation   ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  toolInvocations ToolInvocation[]
+}
+
+model ToolInvocation {
+  id          String @id @default(cuid())
+  messageId   String
+  toolName    String
+  input       Json
+  output      Json?
+  status      String
+  latencyMs   Int?
+  error       String?
+  createdAt   DateTime @default(now())
+  completedAt DateTime?
+  message     ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id        String @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String
+  url       String?
+  read      Boolean @default(false)
+  createdAt DateTime @default(now())
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, read, createdAt])
+}

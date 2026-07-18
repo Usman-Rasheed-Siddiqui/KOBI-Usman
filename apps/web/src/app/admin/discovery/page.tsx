@@ -1,0 +1,1 @@
+import { AdminDiscoveryClient } from "@/components/admin-discovery-client";export const metadata={title:"Discovery console"};export default function Page(){return <main className="mx-auto max-w-6xl py-8"><AdminDiscoveryClient/></main>}

@@ -1,0 +1,41 @@
+{
+  "name": "kobi",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "dev": "npm --workspace @openforge/web run dev",
+    "dev:worker": "npm --workspace @openforge/worker run dev",
+    "build": "npm --workspace @openforge/web run build",
+    "start": "npm --workspace @openforge/web run start",
+    "worker": "npm --workspace @openforge/worker run start",
+    "lint": "npm --workspace @openforge/web run lint",
+    "typecheck": "npm --workspace @openforge/web run typecheck && npm --workspace @openforge/worker run typecheck",
+    "test": "tsx --test tests/**/*.test.ts",
+    "prisma:generate": "prisma generate --schema packages/database/prisma/schema.prisma",
+    "prisma:push": "prisma db push --schema packages/database/prisma/schema.prisma",
+    "prisma:migrate": "prisma migrate dev --schema packages/database/prisma/schema.prisma",
+    "prisma:deploy": "prisma migrate deploy --schema packages/database/prisma/schema.prisma",
+    "prisma:studio": "prisma studio --schema packages/database/prisma/schema.prisma",
+    "seed": "tsx packages/database/src/seed.ts",
+    "setup": "npm run prisma:generate && npm run prisma:push && npm run seed",
+    "e2e": "npm --workspace @openforge/web run e2e"
+  },
+  "devDependencies": {
+    "@types/node": "26.1.1",
+    "@types/pg": "8.16.0",
+    "babel-plugin-react-compiler": "^1.0.0",
+    "dotenv": "17.2.3",
+    "eslint": "9.39.2",
+    "prisma": "7.8.0",
+    "tsx": "4.23.1",
+    "typescript": "6.0.3"
+  }
+}
