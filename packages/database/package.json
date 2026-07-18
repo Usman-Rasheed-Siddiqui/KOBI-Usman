@@ -8,7 +8,7 @@
     "./env": "./src/env.ts",
     "./persist": "./src/persist-opportunities.ts",
     "./register-env": "./src/register-env.ts",
-    "./generated": "./src/generated/prisma/client.ts"
+    "./generated": "./src/generated/prisma/client.js"
   },
   "dependencies": {
     "@openforge/domain": "1.0.0",

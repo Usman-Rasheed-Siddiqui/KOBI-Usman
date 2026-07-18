@@ -13,7 +13,7 @@
   "scripts": {
     "dev": "npm --workspace @openforge/web run dev",
     "dev:worker": "npm --workspace @openforge/worker run dev",
-    "build": "npm --workspace @openforge/web run build",
+    "build": "npm run prisma:generate && npm --workspace @openforge/web run build",
     "start": "npm --workspace @openforge/web run start",
     "worker": "npm --workspace @openforge/worker run start",
     "lint": "npm --workspace @openforge/web run lint",
